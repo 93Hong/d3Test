@@ -1,71 +1,930 @@
-<!-- <!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Welcome</title>
-</head>
-<body>
-  <h1>welcome home</h1>
-</body>
-</html> -->
 <!DOCTYPE html>
 <meta charset="utf-8">
-<canvas width="960" height="500"></canvas>
-<script src="//d3js.org/d3.v4.0.0-alpha.4.min.js"></script>
+<style>
+    text {
+        font: 10px sans-serif;
+    }
+
+    .axis path,
+    .axis line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+    }
+
+    .line {
+        fill: none;
+        stroke-width: 1.5px;
+    }
+
+    .label {
+        text-anchor: middle;
+    }
+
+    .label rect {
+        fill: white;
+    }
+
+    .label-key {
+        font-weight: bold;
+    }
+</style>
+<svg width="1200" height="1100"></svg>
+<script src="//d3js.org/d3.v4.0.0-alpha.9.min.js"></script>
 <script>
+    var term = 40;
 
-var canvas = document.querySelector("canvas"),
-    context = canvas.getContext("2d");
+    // naver
+    (function() {
 
-var width = canvas.width,
-    height = canvas.height,
-    radius = Math.min(width, height) / 2;
+        var parseTime = d3.timeParse("%Y");
 
-var colors = ["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"];
+        var svg = d3.select("svg");
 
-var arc = d3.arc()
-    .outerRadius(radius - 10)
-    .innerRadius(0)
-    .context(context);
+        var margin = {
+                top: 30 + term,
+                right: 10,
+                bottom: 60,
+                left: 30
+            },
+            width = +svg.attr("width") / 2 - margin.left - margin.right,
+            height = +svg.attr("height") / 3 - margin.top - margin.bottom,
+            labelPadding = 3;
 
-var labelArc = d3.arc()
-    .outerRadius(radius - 40)
-    .innerRadius(radius - 40)
-    .context(context);
+        var g = svg.append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-var pie = d3.pie()
-    .sort(null)
-    .value(function(d) { return d.population; });
+        d3.requestTsv("naver.tsv", function(d) {
+            //d.date = parseTime(d.date);
+            for (var k in d)
+                if (k !== "date") d[k] = +d[k];
+            return d;
+        }, function(error, data) {
+            if (error) throw error;
 
-context.translate(width / 2, height / 2);
+            var str = "지진";
+            var series = data.columns.slice(1).map(function(key) {
+                key = str;
+                return data.map(function(d) {
+                    return {
+                        key: key,
+                        date: d.date,
+                        value: d[key]
+                    };
+                });
+            });
 
-d3.requestTsv("data.tsv", function(d) {
-  d.population = +d.population;
-  return d;
-}, function(error, data) {
-  if (error) throw error;
+            var x = d3.scaleLinear()
+                .domain([data[0].date, data[data.length - 1].date])
+                .range([0, width]);
 
-  var arcs = pie(data);
+            var y = d3.scaleLinear()
+                .domain([0, d3.max(series, function(s) {
+                    return d3.max(s, function(d) {
+                        return d.value;
+                    });
+                })])
+                .range([height, 0]);
 
-  arcs.forEach(function(d, i) {
-    context.beginPath();
-    arc(d);
-    context.fillStyle = colors[i];
-    context.fill();
-  });
+            var z = d3.scaleCategory10();
 
-  context.beginPath();
-  arcs.forEach(arc);
-  context.strokeStyle = "#fff";
-  context.stroke();
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
 
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillStyle = "#000";
-  arcs.forEach(function(d) {
-    var c = labelArc.centroid(d);
-    context.fillText(d.data.age, c[0], c[1]);
-  });
-});
+            g.selectAll(".tick")
+                .selectAll("text")
+                .text(function(d) {
+                    if (d === 0)
+                        return "현재(H)";
+                    else if (d % 1 === 0)
+                        return "H+" + Math.floor(d);
+                    else
+                        return;
+                });
 
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .call(d3.axisLeft(y));
+
+            var serie = g.selectAll(".serie")
+                .data(series)
+                .enter().append("g")
+                .attr("class", "serie");
+
+            var colors = new Map();
+
+            serie.append("path")
+                .attr("class", "line")
+                .style("stroke", function(d, i) {
+                    colors.set(i, z(d[0].key));
+                    return z(d[0].key);
+                })
+                .attr("d", d3.line()
+                    .x(function(d) {
+                        return x(d.date);
+                    })
+                    .y(function(d) {
+                        return y(d.value);
+                    }));
+
+            var label = serie.selectAll(".label")
+                .data(function(d) {
+                    return d;
+                })
+                .enter().append("g")
+                .attr("class", "label")
+                .attr("transform", function(d, i) {
+                    return "translate(" + x(d.date) + "," + y(d.value) + ")";
+                });
+
+            // label.append("text")
+            //     .attr("dy", ".35em")
+            //     .text(function(d) {
+            //         return d.value;
+            //     })
+            //     .filter(function(d, i) {
+            //         return i === data.length - 1;
+            //     });
+
+            // label.append("rect", "text")
+            //     .datum(function() {
+            //         return this.nextSibling.getBBox();
+            //     })
+            //     .attr("x", function(d) {
+            //         return d.x - labelPadding;
+            //     })
+            //     .attr("y", function(d) {
+            //         return d.y - labelPadding;
+            //     })
+            //     .attr("width", function(d) {
+            //         return d.width + 2 * labelPadding;
+            //     })
+            //     .attr("height", function(d) {
+            //         return d.height + 2 * labelPadding;
+            //     });
+
+            var legend = svg.selectAll(".legend")
+                .data(data.columns.slice(1))
+                .enter().append("g")
+                .attr("class", "legend")
+                .attr("transform", function(d, i) {
+                    return "translate(0," + i * 10 + ")";
+                });
+
+            legend.append("rect")
+                .attr("x", width + 2)
+                .attr("y", term)
+                .attr("width", 18)
+                .attr("height", 6)
+                .style("fill", function(d, i) {
+                    return colors.get(i);
+                });
+
+            legend.append("text")
+                .attr("x", width - 4)
+                .attr("y", 5 + term)
+                .attr("dy", ".35em")
+                .style("text-anchor", "end")
+                .text(function(d) {
+                    return d;
+                });
+
+
+            var title = svg.selectAll(".title")
+                .data("naver")
+                .enter().append("g")
+                .attr("class", "title");
+
+            title.append("text")
+                .attr("x", width / 2 + margin.left)
+                .attr("y", 5 + term)
+                .attr("dy", ".5em")
+                .style("text-anchor", "middle")
+                .text("네이버 기사 단어 수 (30분 단위)");
+
+        });
+
+    })();
+    //naverCumulative
+    (function() {
+        var parseTime = d3.timeParse("%Y");
+
+        var svg = d3.select("svg");
+
+        var margin = {
+                top: 30 + term,
+                right: 60,
+                bottom: 60,
+                left: 30
+            },
+            width = +svg.attr("width") / 2 - margin.left - margin.right,
+            height = +svg.attr("height") / 3 - margin.top - margin.bottom,
+            labelPadding = 3;
+
+        var g = svg.append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        d3.requestTsv("naverCumulative.tsv", function(d) {
+            //d.date = parseTime(d.date);
+            for (var k in d)
+                if (k !== "date") d[k] = +d[k];
+            return d;
+        }, function(error, data) {
+            if (error) throw error;
+
+            var series = data.columns.slice(1).map(function(key) {
+                return data.map(function(d) {
+                    return {
+                        key: key,
+                        date: d.date,
+                        value: d[key]
+                    };
+                });
+            });
+
+            var x = d3.scaleLinear()
+                .domain([data[0].date, data[data.length - 1].date])
+                .range([width + 100, width * 2 + 100]);
+
+            var y = d3.scaleLinear()
+                .domain([0, d3.max(series, function(s) {
+                    return d3.max(s, function(d) {
+                        return d.value;
+                    });
+                })])
+                .range([height, 0]);
+
+            var z = d3.scaleCategory10();
+
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
+
+            g.selectAll(".tick")
+                .selectAll("text")
+                .text(function(d) {
+                    if (d === 0)
+                        return "현재(D)";
+                    else if (d % 1 === 0)
+                        return "D+" + Math.floor(d);
+                    else
+                        return;
+                });
+
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .attr("transform", "translate(" + (width + 100) + ",0)")
+                .call(d3.axisLeft(y));
+
+            var serie = g.selectAll(".serie")
+                .data(series)
+                .enter().append("g")
+                .attr("class", "serie");
+
+            var colors = new Map();
+
+            serie.append("path")
+                .attr("class", "line")
+                .style("stroke", function(d, i) {
+                    colors.set(i, z(d[0].key));
+                    return z(d[0].key);
+                })
+                .attr("d", d3.line()
+                    .x(function(d) {
+                        return x(d.date);
+                    })
+                    .y(function(d) {
+                        return y(d.value);
+                    }));
+
+            var label = serie.selectAll(".label")
+                .data(function(d) {
+                    return d;
+                })
+                .enter().append("g")
+                .attr("class", "label")
+                .attr("transform", function(d, i) {
+                    return "translate(" + x(d.date) + "," + y(d.value) + ")";
+                });
+
+
+            var legend2 = svg.selectAll(".legend2")
+                .data(data.columns.slice(1))
+                .enter().append("g")
+                .attr("class", "legend2")
+                .attr("transform", function(d, i) {
+                    return "translate(0," + i * 10 + ")";
+                });
+
+            legend2.append("rect")
+                .attr("x", svg.attr("width") - margin.right + 6) //width - 18)
+                .attr("y", term)
+                .attr("width", 18)
+                .attr("height", 6)
+                .style("fill", function(d, i) {
+                    return colors.get(i);
+                });
+
+            legend2.append("text")
+                .attr("x", svg.attr("width") - margin.right)
+                .attr("y", 5 + term)
+                .attr("dy", ".35em")
+                .style("text-anchor", "end")
+                .text(function(d) {
+                    return d;
+                });
+
+
+            var title = svg.selectAll(".title2")
+                .data("naver")
+                .enter().append("g")
+                .attr("class", "title2");
+
+            title.append("text")
+                .attr("x", width / 2 * 3 + margin.left * 2 + margin.right)
+                .attr("y", 5 + term)
+                .attr("dy", ".5em")
+                .style("text-anchor", "middle")
+                .text("네이버 기사 단어 수 (1일 단위)");
+        });
+    })();
+
+
+    // daum
+    (function() {
+        var parseTime = d3.timeParse("%Y");
+
+        var svg = d3.select("svg");
+
+        var margin = {
+                top: svg.attr("height") / 3 + term * 2,
+                right: 10,
+                bottom: 60,
+                left: 30
+            },
+            width = +svg.attr("width") / 2 - margin.left - margin.right,
+            height = +svg.attr("height") / 3 * 2 - margin.top - margin.bottom + term,
+            labelPadding = 3;
+
+        var g = svg.append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        d3.requestTsv("daum.tsv", function(d) {
+            //d.date = parseTime(d.date);
+            for (var k in d)
+                if (k !== "date") d[k] = +d[k];
+            return d;
+        }, function(error, data) {
+            if (error) throw error;
+
+            var series = data.columns.slice(1).map(function(key) {
+                return data.map(function(d) {
+                    return {
+                        key: key,
+                        date: d.date,
+                        value: d[key]
+                    };
+                });
+            });
+
+            var x = d3.scaleLinear()
+                .domain([data[0].date, data[data.length - 1].date])
+                .range([0, width]);
+
+            var y = d3.scaleLinear()
+                .domain([0, d3.max(series, function(s) {
+                    return d3.max(s, function(d) {
+                        return d.value;
+                    });
+                })])
+                .range([height, 0]);
+
+            var z = d3.scaleCategory10();
+
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
+
+            g.selectAll(".tick")
+                .selectAll("text")
+                .text(function(d) {
+                    if (d === 0)
+                        return "현재(H)";
+                    else if (d % 1 === 0)
+                        return "H+" + Math.floor(d);
+                    else
+                        return;
+                });
+
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .call(d3.axisLeft(y));
+
+            var serie = g.selectAll(".serie")
+                .data(series)
+                .enter().append("g")
+                .attr("class", "serie");
+
+            var colors = new Map();
+
+            serie.append("path")
+                .attr("class", "line")
+                .style("stroke", function(d, i) {
+                    colors.set(i, z(d[0].key));
+                    return z(d[0].key);
+                })
+                .attr("d", d3.line()
+                    .x(function(d) {
+                        return x(d.date);
+                    })
+                    .y(function(d) {
+                        return y(d.value);
+                    }));
+
+            var label = serie.selectAll(".label")
+                .data(function(d) {
+                    return d;
+                })
+                .enter().append("g")
+                .attr("class", "label")
+                .attr("transform", function(d, i) {
+                    return "translate(" + x(d.date) + "," + y(d.value) + ")";
+                });
+
+
+            var legend3 = svg.selectAll(".legend3")
+                .data(data.columns.slice(1))
+                .enter().append("g")
+                .attr("class", "legend3")
+                .attr("transform", function(d, i) {
+                    return "translate(0," + i * 10 + ")";
+                });
+
+            legend3.append("rect")
+                .attr("x", width + 2)
+                .attr("y", svg.attr("height") / 3 + term)
+                .attr("width", 18)
+                .attr("height", 6)
+                .style("fill", function(d, i) {
+                    return colors.get(i);
+                });
+
+            legend3.append("text")
+                .attr("x", width - 4)
+                .attr("y", svg.attr("height") / 3 + 5 + term)
+                .attr("dy", ".35em")
+                .style("text-anchor", "end")
+                .text(function(d) {
+                    return d;
+                });
+
+            var title = svg.selectAll(".title3")
+                .data("naver")
+                .enter().append("g")
+                .attr("class", "title3");
+
+            title.append("text")
+                .attr("x", width / 2 + margin.left)
+                .attr("y", svg.attr("height") / 3 + 5 + term)
+                .attr("dy", ".5em")
+                .style("text-anchor", "middle")
+                .text("다음 기사 단어 수 (30분 단위)");
+
+        });
+    })();
+    //daumCumulative
+    (function() {
+        var parseTime = d3.timeParse("%Y");
+
+        var svg = d3.select("svg");
+
+        var margin = {
+                top: svg.attr("height") / 3 + term * 2,
+                right: 60,
+                bottom: 60,
+                left: 30
+            },
+            width = +svg.attr("width") / 2 - margin.left - margin.right,
+            height = +svg.attr("height") / 3 * 2 - margin.top - margin.bottom + term,
+            labelPadding = 3;
+
+        var g = svg.append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        d3.requestTsv("daumCumulative.tsv", function(d) {
+            //d.date = parseTime(d.date);
+            for (var k in d)
+                if (k !== "date") d[k] = +d[k];
+            return d;
+        }, function(error, data) {
+            if (error) throw error;
+
+            var series = data.columns.slice(1).map(function(key) {
+                return data.map(function(d) {
+                    return {
+                        key: key,
+                        date: d.date,
+                        value: d[key]
+                    };
+                });
+            });
+
+            var x = d3.scaleLinear()
+                .domain([data[0].date, data[data.length - 1].date])
+                .range([width + 100, width * 2 + 100]);
+
+            var y = d3.scaleLinear()
+                .domain([0, d3.max(series, function(s) {
+                    return d3.max(s, function(d) {
+                        return d.value;
+                    });
+                })])
+                .range([height, 0]);
+
+            var z = d3.scaleCategory10();
+
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
+
+            g.selectAll(".tick")
+                .selectAll("text")
+                .text(function(d) {
+                    if (d === 0)
+                        return "현재(D)";
+                    else if (d % 1 === 0)
+                        return "D+" + Math.floor(d);
+                    else
+                        return;
+                });
+
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .attr("transform", "translate(" + (width + 100) + ",0)")
+                .call(d3.axisLeft(y));
+
+            var serie = g.selectAll(".serie")
+                .data(series)
+                .enter().append("g")
+                .attr("class", "serie");
+
+            var colors = new Map();
+
+            serie.append("path")
+                .attr("class", "line")
+                .style("stroke", function(d, i) {
+                    colors.set(i, z(d[0].key));
+                    return z(d[0].key);
+                })
+                .attr("d", d3.line()
+                    .x(function(d) {
+                        return x(d.date);
+                    })
+                    .y(function(d) {
+                        return y(d.value);
+                    }));
+
+            var label = serie.selectAll(".label")
+                .data(function(d) {
+                    return d;
+                })
+                .enter().append("g")
+                .attr("class", "label")
+                .attr("transform", function(d, i) {
+                    return "translate(" + x(d.date) + "," + y(d.value) + ")";
+                });
+
+
+            var legend4 = svg.selectAll(".legend4")
+                .data(data.columns.slice(1))
+                .enter().append("g")
+                .attr("class", "legend4")
+                .attr("transform", function(d, i) {
+                    return "translate(0," + i * 10 + ")";
+                });
+
+            legend4.append("rect")
+                .attr("x", svg.attr("width") - margin.right + 6)
+                .attr("y", svg.attr("height") / 3 + term)
+                .attr("width", 18)
+                .attr("height", 6)
+                .style("fill", function(d, i) {
+                    return colors.get(i);
+                });
+
+            legend4.append("text")
+                .attr("x", svg.attr("width") - margin.right)
+                .attr("y", svg.attr("height") / 3 + 5 + term)
+                .attr("dy", ".35em")
+                .style("text-anchor", "end")
+                .text(function(d) {
+                    return d;
+                });
+
+
+            var title = svg.selectAll(".title4")
+                .data("naver")
+                .enter().append("g")
+                .attr("class", "title4");
+
+            title.append("text")
+                .attr("x", width / 2 * 3 + margin.left * 2 + margin.right)
+                .attr("y", svg.attr("height") / 3 + 5 + term)
+                .attr("dy", ".5em")
+                .style("text-anchor", "middle")
+                .text("다음 기사 단어 수 (1일 단위)");
+        });
+    })();
+
+
+    // twitter
+    (function() {
+        var parseTime = d3.timeParse("%Y");
+
+        var svg = d3.select("svg");
+
+        var margin = {
+                top: svg.attr("height") / 3 * 2 + term * 3,
+                right: 10,
+                bottom: 60,
+                left: 30
+            },
+            width = +svg.attr("width") / 2 - margin.left - margin.right,
+            height = +svg.attr("height") - margin.top - margin.bottom + term,
+            labelPadding = 3;
+
+        var g = svg.append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        d3.requestTsv("twitter.tsv", function(d) {
+            //d.date = parseTime(d.date);
+            for (var k in d)
+                if (k !== "date") d[k] = +d[k];
+            return d;
+        }, function(error, data) {
+            if (error) throw error;
+
+            var series = data.columns.slice(1).map(function(key) {
+                return data.map(function(d) {
+                    return {
+                        key: key,
+                        date: d.date,
+                        value: d[key]
+                    };
+                });
+            });
+
+            var x = d3.scaleLinear()
+                .domain([data[0].date, data[data.length - 1].date])
+                .range([0, width]);
+
+            var y = d3.scaleLinear()
+                .domain([0, d3.max(series, function(s) {
+                    return d3.max(s, function(d) {
+                        return d.value;
+                    });
+                })])
+                .range([height, 0]);
+
+            var z = d3.scaleCategory10();
+
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
+
+            g.selectAll(".tick")
+                .selectAll("text")
+                .text(function(d) {
+                    if (d === 0)
+                        return "현재(H)";
+                    else if (d % 1 === 0)
+                        return "H+" + Math.floor(d);
+                    else
+                        return;
+                });
+
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .call(d3.axisLeft(y));
+
+            var serie = g.selectAll(".serie")
+                .data(series)
+                .enter().append("g")
+                .attr("class", "serie");
+
+            var colors = new Map();
+
+            serie.append("path")
+                .attr("class", "line")
+                .style("stroke", function(d, i) {
+                    colors.set(i, z(d[0].key));
+                    return z(d[0].key);
+                })
+                .attr("d", d3.line()
+                    .x(function(d) {
+                        return x(d.date);
+                    })
+                    .y(function(d) {
+                        return y(d.value);
+                    }));
+
+            var label = serie.selectAll(".label")
+                .data(function(d) {
+                    return d;
+                })
+                .enter().append("g")
+                .attr("class", "label")
+                .attr("transform", function(d, i) {
+                    return "translate(" + x(d.date) + "," + y(d.value) + ")";
+                });
+
+            var legend5 = svg.selectAll(".legend5")
+                .data(data.columns.slice(1))
+                .enter().append("g")
+                .attr("class", "legend5")
+                .attr("transform", function(d, i) {
+                    return "translate(0," + i * 10 + ")";
+                });
+
+            legend5.append("rect")
+                .attr("x", width + 2)
+                .attr("y", svg.attr("height") / 3 * 2 + term * 2)
+                .attr("width", 18)
+                .attr("height", 6)
+                .style("fill", function(d, i) {
+                    return colors.get(i);
+                });
+
+            legend5.append("text")
+                .attr("x", width - 4)
+                .attr("y", svg.attr("height") / 3 * 2 + 5 + term * 2)
+                .attr("dy", ".35em")
+                .style("text-anchor", "end")
+                .text(function(d) {
+                    return d;
+                });
+
+            var title = svg.selectAll(".title5")
+                .data("naver")
+                .enter().append("g")
+                .attr("class", "title5");
+
+            title.append("text")
+                .attr("x", width / 2 + margin.left)
+                .attr("y", svg.attr("height") / 3 * 2 + 5 + term * 2)
+                .attr("dy", ".5em")
+                .style("text-anchor", "middle")
+                .text("트위터 트윗 수 (30분 단위)");
+        });
+    })();
+    //twitterCumulative
+    (function() {
+        var parseTime = d3.timeParse("%Y");
+
+        var svg = d3.select("svg");
+
+        var margin = {
+                top: svg.attr("height") / 3 * 2 + term * 3,
+                right: 60,
+                bottom: 60,
+                left: 30
+            },
+            width = +svg.attr("width") / 2 - margin.left - margin.right,
+            height = +svg.attr("height") - margin.top - margin.bottom + term,
+            labelPadding = 3;
+
+        var g = svg.append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        d3.requestTsv("twitterCumulative.tsv", function(d) {
+            //d.date = parseTime(d.date);
+            for (var k in d)
+                if (k !== "date") d[k] = +d[k];
+            return d;
+        }, function(error, data) {
+            if (error) throw error;
+
+            var series = data.columns.slice(1).map(function(key) {
+                return data.map(function(d) {
+                    return {
+                        key: key,
+                        date: d.date,
+                        value: d[key]
+                    };
+                });
+            });
+
+            var x = d3.scaleLinear()
+                .domain([data[0].date, data[data.length - 1].date])
+                .range([width + 100, width * 2 + 100]);
+
+            var y = d3.scaleLinear()
+                .domain([0, d3.max(series, function(s) {
+                    return d3.max(s, function(d) {
+                        return d.value;
+                    });
+                })])
+                .range([height, 0]);
+
+            var z = d3.scaleCategory10();
+
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
+
+            g.selectAll(".tick")
+                .selectAll("text")
+                .text(function(d) {
+                    if (d === 0)
+                        return "현재(D)";
+                    else if (d % 1 === 0)
+                        return "D+" + Math.floor(d);
+                    else
+                        return;
+                });
+
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .attr("transform", "translate(" + (width + 100) + ",0)")
+                .call(d3.axisLeft(y));
+
+            var serie = g.selectAll(".serie")
+                .data(series)
+                .enter().append("g")
+                .attr("class", "serie");
+
+            var colors = new Map();
+
+            serie.append("path")
+                .attr("class", "line")
+                .style("stroke", function(d, i) {
+                    colors.set(i, z(d[0].key));
+                    return z(d[0].key);
+                })
+                .attr("d", d3.line()
+                    .x(function(d) {
+                        return x(d.date);
+                    })
+                    .y(function(d) {
+                        return y(d.value);
+                    }));
+
+            var label = serie.selectAll(".label")
+                .data(function(d) {
+                    return d;
+                })
+                .enter().append("g")
+                .attr("class", "label")
+                .attr("transform", function(d, i) {
+                    return "translate(" + x(d.date) + "," + y(d.value) + ")";
+                });
+
+
+            var legend6 = svg.selectAll(".legend6")
+                .data(data.columns.slice(1))
+                .enter().append("g")
+                .attr("class", "legend6")
+                .attr("transform", function(d, i) {
+                    return "translate(0," + i * 10 + ")";
+                });
+
+            legend6.append("rect")
+                .attr("x", svg.attr("width") - margin.right + 6)
+                .attr("y", svg.attr("height") / 3 * 2 + term * 2)
+                .attr("width", 18)
+                .attr("height", 6)
+                .style("fill", function(d, i) {
+                    return colors.get(i);
+                });
+
+            legend6.append("text")
+                .attr("x", svg.attr("width") - margin.right)
+                .attr("y", svg.attr("height") / 3 * 2 + 5 + term * 2)
+                .attr("dy", ".35em")
+                .style("text-anchor", "end")
+                .text(function(d) {
+                    return d;
+                });
+
+
+            var title = svg.selectAll(".title6")
+                .data("naver")
+                .enter().append("g")
+                .attr("class", "title6");
+
+            title.append("text")
+                .attr("x", width / 2 * 3 + margin.left * 2 + margin.right)
+                .attr("y", svg.attr("height") / 3 * 2 + 5 + term * 2)
+                .attr("dy", ".5em")
+                .style("text-anchor", "middle")
+                .text("트위처 트윗 수 (1일 단위)");
+        });
+    })();
 </script>
