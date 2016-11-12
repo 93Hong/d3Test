@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <div class="contact-menu">
+        <a href="/create">Create</a>
+    </div>
+    <form action="/search" method="post">
+        <select name="engineList">
+            <option value="naver">naver</option>
+            <option value="daum">daum</option>
+            <option value="all">all</option>
+        </select>
+        <select name="wordList">
+            <% name.forEach(function(w) { %>
+                <option value="<%= w %>">
+                    <%= w %>
+                </option>
+            <% }); %>
+        </select>
+        <input type="submit" value="Add workout" />
+    </form>
+</body>
+
+</html>
