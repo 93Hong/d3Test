@@ -5,6 +5,8 @@ var fs = require('fs');
 var json2csv = require('json2csv');
 var ejs = require('ejs');
 var bodyParser = require('body-parser');
+var schedule = require('node-schedule');
+var HashMap = require('hashmap');
 
 app.set('view engine', 'ejs');
 app.set('views', __dirname + '/views');
@@ -15,9 +17,8 @@ app.use(bodyParser.urlencoded({
     extended: true
 }));
 
-
 // variable declaration
-var pre = "/usr"; // "c:";
+var pre = "/usr"; //"c:";//
 var dirname = pre + "/data/crawl/result/",
     naver = "naver/",
     daum = "daum/",
@@ -25,7 +26,8 @@ var dirname = pre + "/data/crawl/result/",
     naverCumulative = "naverCumulative/",
     daumCumulative = "daumCumulative/",
     twitterCumulative = "twitterCumulative/";
-var allWords = null,
+var allWords = [],
+    englishWords = [],
     word = null,
     engine = null;
 var title = [],
@@ -38,7 +40,7 @@ var title = [],
 ///////////////////////////////////////////
 var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
     //var str = fs.readFileSync('/usr/data/crawl/komoran/twitter/word.txt') + '';
-    //var args = str.split("/");
+    //var allWords = str.split("/");
 
     if (allWords !== null && typeof allWords !== 'undefined' && allWords.length > 0) {
         var fields = ['date'];
@@ -72,11 +74,11 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                     var json = {};
 
                     json.date = 0.5 * (size - i - 1);
-                    for (var j = 0; j < args.length; j++) {
-                        var tmp = obj[args[j]];
+                    for (var j = 0; j < allWords.length; j++) {
+                        var tmp = obj[allWords[j]];
                         if (typeof tmp == 'undefined')
                             tmp = 0;
-                        json[args[j]] = tmp;
+                        json[allWords[j]] = tmp;
                     }
                     tsvData.push(json);
 
@@ -92,7 +94,6 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                 });
                 fs.writeFile('./public/naver.tsv', tsv, function(err) {
                     if (err) throw err;
-                    console.log('file saved');
                 });
             });
         });
@@ -128,11 +129,11 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                         json.date = 0;
                     else
                         json.date = (size - i) / 48;
-                    for (var j = 0; j < args.length; j++) {
-                        var tmp = obj[args[j]];
+                    for (var j = 0; j < allWords.length; j++) {
+                        var tmp = obj[allWords[j]];
                         if (typeof tmp == 'undefined')
                             tmp = 0;
-                        json[args[j]] = tmp;
+                        json[allWords[j]] = tmp;
                     }
                     tsvData.push(json);
 
@@ -148,7 +149,6 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                 });
                 fs.writeFile('./public/naverCumulative.tsv', tsv, function(err) {
                     if (err) throw err;
-                    console.log('file saved');
                 });
             });
         });
@@ -160,7 +160,7 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                 throw err;
             }
             fs.exists(pre + "/data/crawl/komoran/daum/index.txt", function(fileok) {
-                if (fileok) fs.readFile("/usr/data/crawl/komoran/daum/index.txt", 'utf-8', function(err, content) {
+                if (fileok) fs.readFile(pre + "/data/crawl/komoran/daum/index.txt", 'utf-8', function(err, content) {
                     if (err) {
                         console.error("Could not list the directory.", err);
                         throw err;
@@ -179,11 +179,11 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                         var json = {};
 
                         json.date = 0.5 * (size - i - 1);
-                        for (var j = 0; j < args.length; j++) {
-                            var tmp = obj[args[j]];
+                        for (var j = 0; j < allWords.length; j++) {
+                            var tmp = obj[allWords[j]];
                             if (typeof tmp == 'undefined')
                                 tmp = 0;
-                            json[args[j]] = tmp;
+                            json[allWords[j]] = tmp;
                         }
                         tsvData.push(json);
 
@@ -199,7 +199,6 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                     });
                     fs.writeFile('./public/daum.tsv', tsv, function(err) {
                         if (err) throw err;
-                        console.log('file saved');
                     });
                 });
             });
@@ -236,11 +235,11 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                         json.date = 0;
                     else
                         json.date = (size - i) / 48;
-                    for (var j = 0; j < args.length; j++) {
-                        var tmp = obj[args[j]];
+                    for (var j = 0; j < allWords.length; j++) {
+                        var tmp = obj[allWords[j]];
                         if (typeof tmp == 'undefined')
                             tmp = 0;
-                        json[args[j]] = tmp;
+                        json[allWords[j]] = tmp;
                     }
                     tsvData.push(json);
 
@@ -256,10 +255,11 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                 });
                 fs.writeFile('./public/daumCumulative.tsv', tsv, function(err) {
                     if (err) throw err;
-                    console.log('file saved');
                 });
             });
         });
+
+        console.log('file saved');
     }
 });
 ///////////////////////////////////////////
@@ -273,14 +273,20 @@ app.get("/", function(req, res) {
 //// register words  '/create'
 ///////////////////////////////////////////
 app.get("/create", function(req, res) {
-    res.render("form");
+    res.render("form", {
+      allWords: allWords,
+      englishWords: englishWords
+    });
 });
 
 app.post("/create", function(req, res) {
-    var arr = req.body.name.filter(function(n) {
-        return n !== "";
-    });
-    allWords = arr;
+    if (req.body.allWords.length === 0) {
+      allWords = [];
+      englishWords = [];
+    } else {
+      allWords = req.body.allWords.split(',');
+      englishWords = req.body.englishWords.split(',');
+    }
 
     res.redirect('/search');
 });
@@ -291,8 +297,10 @@ app.post("/create", function(req, res) {
 //// search word  '/search'
 ///////////////////////////////////////////
 app.get("/search", function(req, res) {
-    if (allWords === null)
+    if (allWords === null) {
         allWords = [];
+        englishWords = [];
+    }
     res.render("search", {
         name: allWords
     });
@@ -303,24 +311,28 @@ app.post("/search", function(req, res) {
     engine = req.body.engineList;
 
     if (word !== null && word !== undefined && typeof word !== undefined) {
-        var data = fs.readFileSync("c:" + "/data/crawl/article/title/daumTitles.txt");
-        data += fs.readFileSync("c:" + "/data/crawl/article/title/naverTitles.txt");
+        var data = fs.readFileSync(pre + "/data/crawl/article/title/daumTitles.txt");
+        data += fs.readFileSync(pre + "/data/crawl/article/title/naverTitles.txt");
         data = data.toString().split('\n');
 
         url = [];
         title = [];
+        var map = new HashMap();
 
         var k = 0;
         for (i = 0; i < data.length; i++) {
             if (/^\s*$/.test(data[i]))
                 continue;
             var tmp = data[i].split(/,(.+)?/);
-            if (tmp[1].includes(word)) {
-                url[k] = tmp[0];
-                title[k] = tmp[1];
-                k++;
+            if (tmp[1].indexOf(word) > -1) {
+                map.set(tmp[1], tmp[0]);
             }
         }
+        map.forEach(function(value, key) {
+            url[k] = value;
+            title[k] = key;
+            k++;
+        });
         res.redirect('/view');
     } else {
         res.redirect('/search');
@@ -333,9 +345,14 @@ app.post("/search", function(req, res) {
 //// show charts  '/view'
 ///////////////////////////////////////////
 app.use("/view", function(req, res) {
-    if (word !== null && url.length !== 0 && title.length !== 0 && engine !== null) {
+    if (word !== null && engine !== null) {
+        var i = 0;
+        for (i; i < allWords.length; i++)
+            if (allWords[i] == word)
+                break;
         res.render("index", {
             name: word,
+            ename: englishWords[i],
             url: url,
             title: title,
             engine: engine

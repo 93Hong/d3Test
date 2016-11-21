@@ -1,29 +1,84 @@
 <!DOCTYPE html>
 <html>
 
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script>
+        // 현재 있는 리스트의 사이즈
+        var size = <%= allWords.length %>;
+
+        function closeEvent(select) {
+            $(select).click(function() {
+                target = "#candidate_" + $(this).attr('data-id');
+                $(target).remove();
+            })
+        }
+        $(function() {
+            closeEvent('.close_btn');
+
+            $('#word_submit').click(function() {
+                var word = $('#word_input').val();
+                var eword = $('#eword_input').val();
+
+                if (word.trim() == "" || eword.trim() == "")
+                    return;
+
+                $('#word_input').val('');
+                $('#eword_input').val('');
+
+                size++;
+                var tmp_html = "<div id='candidate_" + size + "'>" +
+                    "<span class='word'>" + word + " " + eword + "</span>" +
+                    "<button class='close_btn' data-id='" + size + "'>x</button>" +
+                    "</div>";
+                $('#candidate_list').append(tmp_html);
+                closeEvent("#candidate_" + size + " .close_btn");
+            })
+
+            $('#final_submit').click(function() {
+                var word = [];
+                var eword = [];
+                var k = 0;
+                $('.word').each(function(idx) {
+                    word[k] = $(this).html().split(" ")[0];
+                    eword[k] = $(this).html().split(" ")[1];
+                    k++;
+                })
+                console.log("adfadfa" + word);
+                $('#final_words').val(word);
+                $('#final_ewords').val(eword);
+            })
+        });
+    </script>
+</head>
+
 <body>
     <div class="contact contact-new">
         <div class="contact-menu">
             <a href="/search">Search</a>
         </div>
-        <form class="contact-form" action="/create" method="post">
-            <div>
-                <input type="text" name="name" value="" size="10">
-                <input type="text" name="name" value="" size="10">
-                <input type="text" name="name" value="" size="10">
-                <input type="text" name="name" value="" size="10">
-                <input type="text" name="name" value="" size="10">
-                <input type="text" name="name" value="" size="10">
-                <input type="text" name="name" value="" size="10">
-                <input type="text" name="name" value="" size="10">
-                <input type="text" name="name" value="" size="10">
-                <input type="text" name="name" value="" size="10">
-            </div>
-            <div>
-                <button type="submit">Submit</button>
-            </div>
-        </form>
+        <div id="candidate_list">
+            <% for(var i=0; i<allWords.length; i++) { %>
+                <div id="candidate_<%= i %>">
+                    <span class="word"><%= allWords[i] %> <%= englishWords[i] %></span>
+                    <button class="close_btn" data-id="<%= i %>" value="x">x</button>
+                </div>
+                <% } %>
+        </div>
+        <div>
+            <input id="word_input" type="text" name="word" value="" size="10">
+            <input id="eword_input" type="text" name="eWord" value="" size="10">
+        </div>
+        <div>
+            <button id="word_submit" type="submit">Register word</button>
+        </div>
     </div>
+    </br>
+    <form action="/create" method="post">
+        <input type="hidden" name="allWords" id="final_words" />
+        <input type="hidden" name="englishWords" id="final_ewords" />
+        <button id="final_submit" type="submit">Submit</button>
+    </form>
 </body>
 
 </html>

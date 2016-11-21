@@ -29,9 +29,13 @@
         font-weight: bold;
     }
 </style>
-<svg width="1200" height="1100"></svg>
-
+<svg id='giwook' width="1190" height="800"></svg>
 <script src="//d3js.org/d3.v4.0.0-alpha.9.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+
+<head>
+  <h3 align="center"><%= name %> <%= ename %></h3>
+</head>
 
 <script>
     var term = 40;
@@ -39,6 +43,8 @@
     var engine = "<%= engine %>";
 
     if (engine == "naver") {
+        $('#giwook').css('height', 400);
+
         // naver
         (function() {
 
@@ -53,7 +59,7 @@
                     left: 30
                 },
                 width = +svg.attr("width") / 2 - margin.left - margin.right,
-                height = +svg.attr("height") / 3 - margin.top - margin.bottom,
+                height = +svg.attr("height") / 2 - margin.top - margin.bottom,
                 labelPadding = 3;
 
             var g = svg.append("g")
@@ -170,31 +176,31 @@
                 //         return d.height + 2 * labelPadding;
                 //     });
 
-                var legend = svg.selectAll(".legend")
-                    .data(data.columns.slice(1))
-                    .enter().append("g")
-                    .attr("class", "legend")
-                    .attr("transform", function(d, i) {
-                        return "translate(0," + i * 10 + ")";
-                    });
-
-                legend.append("rect")
-                    .attr("x", width + 2)
-                    .attr("y", term)
-                    .attr("width", 18)
-                    .attr("height", 6)
-                    .style("fill", function(d, i) {
-                        return colors.get(i);
-                    });
-
-                legend.append("text")
-                    .attr("x", width - 4)
-                    .attr("y", 5 + term)
-                    .attr("dy", ".35em")
-                    .style("text-anchor", "end")
-                    .text(function(d) {
-                        return d;
-                    });
+                // var legend = svg.selectAll(".legend")
+                //     .data(data.columns.slice(1))
+                //     .enter().append("g")
+                //     .attr("class", "legend")
+                //     .attr("transform", function(d, i) {
+                //         return "translate(0," + i * 10 + ")";
+                //     });
+                //
+                // legend.append("rect")
+                //     .attr("x", width + 2)
+                //     .attr("y", term)
+                //     .attr("width", 18)
+                //     .attr("height", 6)
+                //     .style("fill", function(d, i) {
+                //         return colors.get(i);
+                //     });
+                //
+                // legend.append("text")
+                //     .attr("x", width - 4)
+                //     .attr("y", 5 + term)
+                //     .attr("dy", ".35em")
+                //     .style("text-anchor", "end")
+                //     .text(function(d) {
+                //         return d;
+                //     });
 
 
                 var title = svg.selectAll(".title")
@@ -225,7 +231,7 @@
                     left: 30
                 },
                 width = +svg.attr("width") / 2 - margin.left - margin.right,
-                height = +svg.attr("height") / 3 - margin.top - margin.bottom,
+                height = +svg.attr("height") / 2 - margin.top - margin.bottom,
                 labelPadding = 3;
 
             var g = svg.append("g")
@@ -239,7 +245,10 @@
             }, function(error, data) {
                 if (error) throw error;
 
+
+                var str = keyword;
                 var series = data.columns.slice(1).map(function(key) {
+                    key = str;
                     return data.map(function(d) {
                         return {
                             key: key,
@@ -315,34 +324,6 @@
                         return "translate(" + x(d.date) + "," + y(d.value) + ")";
                     });
 
-
-                var legend2 = svg.selectAll(".legend2")
-                    .data(data.columns.slice(1))
-                    .enter().append("g")
-                    .attr("class", "legend2")
-                    .attr("transform", function(d, i) {
-                        return "translate(0," + i * 10 + ")";
-                    });
-
-                legend2.append("rect")
-                    .attr("x", svg.attr("width") - margin.right + 6) //width - 18)
-                    .attr("y", term)
-                    .attr("width", 18)
-                    .attr("height", 6)
-                    .style("fill", function(d, i) {
-                        return colors.get(i);
-                    });
-
-                legend2.append("text")
-                    .attr("x", svg.attr("width") - margin.right)
-                    .attr("y", 5 + term)
-                    .attr("dy", ".35em")
-                    .style("text-anchor", "end")
-                    .text(function(d) {
-                        return d;
-                    });
-
-
                 var title = svg.selectAll(".title2")
                     .data("naver")
                     .enter().append("g")
@@ -357,6 +338,245 @@
             });
         })();
 
+    } else if (engine == "daum") {
+        $('#giwook').css('height', 400);
+
+        // daum
+        (function() {
+            var parseTime = d3.timeParse("%Y");
+
+            var svg = d3.select("svg");
+
+            var margin = {
+                    top: 30 + term,
+                    right: 10,
+                    bottom: 60,
+                    left: 30
+                },
+                width = +svg.attr("width") / 2 - margin.left - margin.right,
+                height = +svg.attr("height") / 2 - margin.top - margin.bottom,
+                labelPadding = 3;
+
+            var g = svg.append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            d3.requestTsv("/public/daum.tsv", function(d) {
+                //d.date = parseTime(d.date);
+                for (var k in d)
+                    if (k !== "date") d[k] = +d[k];
+                return d;
+            }, function(error, data) {
+                if (error) throw error;
+
+                var str = keyword;
+                var series = data.columns.slice(1).map(function(key) {
+                    key = str;
+                    return data.map(function(d) {
+                        return {
+                            key: key,
+                            date: d.date,
+                            value: d[key]
+                        };
+                    });
+                });
+
+                var x = d3.scaleLinear()
+                    .domain([data[0].date, data[data.length - 1].date])
+                    .range([0, width]);
+
+                var y = d3.scaleLinear()
+                    .domain([0, d3.max(series, function(s) {
+                        return d3.max(s, function(d) {
+                            return d.value;
+                        });
+                    })])
+                    .range([height, 0]);
+
+                var z = d3.scaleCategory10();
+
+                g.append("g")
+                    .attr("class", "axis axis--x")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(d3.axisBottom(x));
+
+                g.selectAll(".tick")
+                    .selectAll("text")
+                    .text(function(d) {
+                        if (d === 0)
+                            return "현재(H)";
+                        else if (d % 1 === 0)
+                            return "H+" + Math.floor(d);
+                        else
+                            return;
+                    });
+
+                g.append("g")
+                    .attr("class", "axis axis--y")
+                    .call(d3.axisLeft(y));
+
+                var serie = g.selectAll(".serie")
+                    .data(series)
+                    .enter().append("g")
+                    .attr("class", "serie");
+
+                var colors = new Map();
+
+                serie.append("path")
+                    .attr("class", "line")
+                    .style("stroke", function(d, i) {
+                        colors.set(i, z(d[0].key));
+                        return z(d[0].key);
+                    })
+                    .attr("d", d3.line()
+                        .x(function(d) {
+                            return x(d.date);
+                        })
+                        .y(function(d) {
+                            return y(d.value);
+                        }));
+
+                var label = serie.selectAll(".label")
+                    .data(function(d) {
+                        return d;
+                    })
+                    .enter().append("g")
+                    .attr("class", "label")
+                    .attr("transform", function(d, i) {
+                        return "translate(" + x(d.date) + "," + y(d.value) + ")";
+                    });
+
+                var title = svg.selectAll(".title3")
+                    .data("naver")
+                    .enter().append("g")
+                    .attr("class", "title3");
+
+                title.append("text")
+                    .attr("x", width / 2 + margin.left)
+                    .attr("y", 5 + term)
+                    .attr("dy", ".5em")
+                    .style("text-anchor", "middle")
+                    .text("다음 기사 단어 수 (30분 단위)");
+
+            });
+        })();
+        //daumCumulative
+        (function() {
+            var parseTime = d3.timeParse("%Y");
+
+            var svg = d3.select("svg");
+
+            var margin = {
+                    top: 30 + term,
+                    right: 60,
+                    bottom: 60,
+                    left: 30
+                },
+                width = +svg.attr("width") / 2 - margin.left - margin.right,
+                height = +svg.attr("height") / 2 - margin.top - margin.bottom,
+                labelPadding = 3;
+
+            var g = svg.append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            d3.requestTsv("/public/daumCumulative.tsv", function(d) {
+                //d.date = parseTime(d.date);
+                for (var k in d)
+                    if (k !== "date") d[k] = +d[k];
+                return d;
+            }, function(error, data) {
+                if (error) throw error;
+
+                var str = keyword;
+                var series = data.columns.slice(1).map(function(key) {
+                    key = str;
+                    return data.map(function(d) {
+                        return {
+                            key: key,
+                            date: d.date,
+                            value: d[key]
+                        };
+                    });
+                });
+
+                var x = d3.scaleLinear()
+                    .domain([data[0].date, data[data.length - 1].date])
+                    .range([width + 100, width * 2 + 100]);
+
+                var y = d3.scaleLinear()
+                    .domain([0, d3.max(series, function(s) {
+                        return d3.max(s, function(d) {
+                            return d.value;
+                        });
+                    })])
+                    .range([height, 0]);
+
+                var z = d3.scaleCategory10();
+
+                g.append("g")
+                    .attr("class", "axis axis--x")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(d3.axisBottom(x));
+
+                g.selectAll(".tick")
+                    .selectAll("text")
+                    .text(function(d) {
+                        if (d === 0)
+                            return "현재(D)";
+                        else if (d % 1 === 0)
+                            return "D+" + Math.floor(d);
+                        else
+                            return;
+                    });
+
+                g.append("g")
+                    .attr("class", "axis axis--y")
+                    .attr("transform", "translate(" + (width + 100) + ",0)")
+                    .call(d3.axisLeft(y));
+
+                var serie = g.selectAll(".serie")
+                    .data(series)
+                    .enter().append("g")
+                    .attr("class", "serie");
+
+                var colors = new Map();
+
+                serie.append("path")
+                    .attr("class", "line")
+                    .style("stroke", function(d, i) {
+                        colors.set(i, z(d[0].key));
+                        return z(d[0].key);
+                    })
+                    .attr("d", d3.line()
+                        .x(function(d) {
+                            return x(d.date);
+                        })
+                        .y(function(d) {
+                            return y(d.value);
+                        }));
+
+                var label = serie.selectAll(".label")
+                    .data(function(d) {
+                        return d;
+                    })
+                    .enter().append("g")
+                    .attr("class", "label")
+                    .attr("transform", function(d, i) {
+                        return "translate(" + x(d.date) + "," + y(d.value) + ")";
+                    });
+
+                var title = svg.selectAll(".title4")
+                    .data("naver")
+                    .enter().append("g")
+                    .attr("class", "title4");
+
+                title.append("text")
+                    .attr("x", width / 2 * 3 + margin.left * 2 + margin.right)
+                    .attr("y", 5 + term)
+                    .attr("dy", ".5em")
+                    .style("text-anchor", "middle")
+                    .text("다음 기사 단어 수 (1일 단위)");
+            });
+        })();
     } else if (engine == "all") {
 
         // naver
@@ -373,7 +593,7 @@
                     left: 30
                 },
                 width = +svg.attr("width") / 2 - margin.left - margin.right,
-                height = +svg.attr("height") / 3 - margin.top - margin.bottom,
+                height = +svg.attr("height") / 2 - margin.top - margin.bottom,
                 labelPadding = 3;
 
             var g = svg.append("g")
@@ -464,59 +684,6 @@
                         return "translate(" + x(d.date) + "," + y(d.value) + ")";
                     });
 
-                // label.append("text")
-                //     .attr("dy", ".35em")
-                //     .text(function(d) {
-                //         return d.value;
-                //     })
-                //     .filter(function(d, i) {
-                //         return i === data.length - 1;
-                //     });
-
-                // label.append("rect", "text")
-                //     .datum(function() {
-                //         return this.nextSibling.getBBox();
-                //     })
-                //     .attr("x", function(d) {
-                //         return d.x - labelPadding;
-                //     })
-                //     .attr("y", function(d) {
-                //         return d.y - labelPadding;
-                //     })
-                //     .attr("width", function(d) {
-                //         return d.width + 2 * labelPadding;
-                //     })
-                //     .attr("height", function(d) {
-                //         return d.height + 2 * labelPadding;
-                //     });
-
-                var legend = svg.selectAll(".legend")
-                    .data(data.columns.slice(1))
-                    .enter().append("g")
-                    .attr("class", "legend")
-                    .attr("transform", function(d, i) {
-                        return "translate(0," + i * 10 + ")";
-                    });
-
-                legend.append("rect")
-                    .attr("x", width + 2)
-                    .attr("y", term)
-                    .attr("width", 18)
-                    .attr("height", 6)
-                    .style("fill", function(d, i) {
-                        return colors.get(i);
-                    });
-
-                legend.append("text")
-                    .attr("x", width - 4)
-                    .attr("y", 5 + term)
-                    .attr("dy", ".35em")
-                    .style("text-anchor", "end")
-                    .text(function(d) {
-                        return d;
-                    });
-
-
                 var title = svg.selectAll(".title")
                     .data("naver")
                     .enter().append("g")
@@ -545,7 +712,7 @@
                     left: 30
                 },
                 width = +svg.attr("width") / 2 - margin.left - margin.right,
-                height = +svg.attr("height") / 3 - margin.top - margin.bottom,
+                height = +svg.attr("height") / 2 - margin.top - margin.bottom,
                 labelPadding = 3;
 
             var g = svg.append("g")
@@ -559,7 +726,9 @@
             }, function(error, data) {
                 if (error) throw error;
 
+                var str = keyword;
                 var series = data.columns.slice(1).map(function(key) {
+                    key = str;
                     return data.map(function(d) {
                         return {
                             key: key,
@@ -634,34 +803,6 @@
                     .attr("transform", function(d, i) {
                         return "translate(" + x(d.date) + "," + y(d.value) + ")";
                     });
-
-
-                var legend2 = svg.selectAll(".legend2")
-                    .data(data.columns.slice(1))
-                    .enter().append("g")
-                    .attr("class", "legend2")
-                    .attr("transform", function(d, i) {
-                        return "translate(0," + i * 10 + ")";
-                    });
-
-                legend2.append("rect")
-                    .attr("x", svg.attr("width") - margin.right + 6) //width - 18)
-                    .attr("y", term)
-                    .attr("width", 18)
-                    .attr("height", 6)
-                    .style("fill", function(d, i) {
-                        return colors.get(i);
-                    });
-
-                legend2.append("text")
-                    .attr("x", svg.attr("width") - margin.right)
-                    .attr("y", 5 + term)
-                    .attr("dy", ".35em")
-                    .style("text-anchor", "end")
-                    .text(function(d) {
-                        return d;
-                    });
-
 
                 var title = svg.selectAll(".title2")
                     .data("naver")
@@ -684,13 +825,13 @@
             var svg = d3.select("svg");
 
             var margin = {
-                    top: svg.attr("height") / 3 + term * 2,
+                    top: svg.attr("height") / 2 + term,
                     right: 10,
                     bottom: 60,
                     left: 30
                 },
                 width = +svg.attr("width") / 2 - margin.left - margin.right,
-                height = +svg.attr("height") / 3 * 2 - margin.top - margin.bottom + term,
+                height = +svg.attr("height") - margin.top - margin.bottom,
                 labelPadding = 3;
 
             var g = svg.append("g")
@@ -704,7 +845,9 @@
             }, function(error, data) {
                 if (error) throw error;
 
+                var str = keyword;
                 var series = data.columns.slice(1).map(function(key) {
+                    key = str;
                     return data.map(function(d) {
                         return {
                             key: key,
@@ -779,33 +922,6 @@
                         return "translate(" + x(d.date) + "," + y(d.value) + ")";
                     });
 
-
-                var legend3 = svg.selectAll(".legend3")
-                    .data(data.columns.slice(1))
-                    .enter().append("g")
-                    .attr("class", "legend3")
-                    .attr("transform", function(d, i) {
-                        return "translate(0," + i * 10 + ")";
-                    });
-
-                legend3.append("rect")
-                    .attr("x", width + 2)
-                    .attr("y", svg.attr("height") / 3 + term)
-                    .attr("width", 18)
-                    .attr("height", 6)
-                    .style("fill", function(d, i) {
-                        return colors.get(i);
-                    });
-
-                legend3.append("text")
-                    .attr("x", width - 4)
-                    .attr("y", svg.attr("height") / 3 + 5 + term)
-                    .attr("dy", ".35em")
-                    .style("text-anchor", "end")
-                    .text(function(d) {
-                        return d;
-                    });
-
                 var title = svg.selectAll(".title3")
                     .data("naver")
                     .enter().append("g")
@@ -813,7 +929,7 @@
 
                 title.append("text")
                     .attr("x", width / 2 + margin.left)
-                    .attr("y", svg.attr("height") / 3 + 5 + term)
+                    .attr("y", svg.attr("height") / 2 + 5)
                     .attr("dy", ".5em")
                     .style("text-anchor", "middle")
                     .text("다음 기사 단어 수 (30분 단위)");
@@ -827,13 +943,13 @@
             var svg = d3.select("svg");
 
             var margin = {
-                    top: svg.attr("height") / 3 + term * 2,
+                    top: svg.attr("height") / 2 + term,
                     right: 60,
                     bottom: 60,
                     left: 30
                 },
                 width = +svg.attr("width") / 2 - margin.left - margin.right,
-                height = +svg.attr("height") / 3 * 2 - margin.top - margin.bottom + term,
+                height = +svg.attr("height") - margin.top - margin.bottom,
                 labelPadding = 3;
 
             var g = svg.append("g")
@@ -847,7 +963,9 @@
             }, function(error, data) {
                 if (error) throw error;
 
+                var str = keyword;
                 var series = data.columns.slice(1).map(function(key) {
+                    key = str;
                     return data.map(function(d) {
                         return {
                             key: key,
@@ -923,34 +1041,6 @@
                         return "translate(" + x(d.date) + "," + y(d.value) + ")";
                     });
 
-
-                var legend4 = svg.selectAll(".legend4")
-                    .data(data.columns.slice(1))
-                    .enter().append("g")
-                    .attr("class", "legend4")
-                    .attr("transform", function(d, i) {
-                        return "translate(0," + i * 10 + ")";
-                    });
-
-                legend4.append("rect")
-                    .attr("x", svg.attr("width") - margin.right + 6)
-                    .attr("y", svg.attr("height") / 3 + term)
-                    .attr("width", 18)
-                    .attr("height", 6)
-                    .style("fill", function(d, i) {
-                        return colors.get(i);
-                    });
-
-                legend4.append("text")
-                    .attr("x", svg.attr("width") - margin.right)
-                    .attr("y", svg.attr("height") / 3 + 5 + term)
-                    .attr("dy", ".35em")
-                    .style("text-anchor", "end")
-                    .text(function(d) {
-                        return d;
-                    });
-
-
                 var title = svg.selectAll(".title4")
                     .data("naver")
                     .enter().append("g")
@@ -958,7 +1048,7 @@
 
                 title.append("text")
                     .attr("x", width / 2 * 3 + margin.left * 2 + margin.right)
-                    .attr("y", svg.attr("height") / 3 + 5 + term)
+                    .attr("y", svg.attr("height") / 2 + 5)
                     .attr("dy", ".5em")
                     .style("text-anchor", "middle")
                     .text("다음 기사 단어 수 (1일 단위)");
@@ -972,11 +1062,11 @@
         <ul>
             <% for(var i=0; i<title.length; i++) { %>
                 <li>
-                    <a href='<%= url[i] %>'>
+                    <a href='<%= url[i] %>' target="_blank">
                         <%= title[i] %>
                     </a>
                 </li>
-                <% } %>
+            <% } %>
         </ul>
     </div>
     <div class="contact-menu">
