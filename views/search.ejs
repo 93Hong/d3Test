@@ -6,7 +6,7 @@
         <a href="/create">Create</a>
     </div>
     <form action="/search" method="post">
-        <select name="engineList">
+        <select class="selectpicker" name="engineList">
             <option value="naver">naver</option>
             <option value="daum">daum</option>
             <option value="all">all</option>
@@ -18,7 +18,7 @@
                 </option>
             <% }); %>
         </select>
-        <input type="submit" value="Add workout" />
+        <input class="btn btn-primary" type="submit" value="Add workout" />
     </form>
 </body>
 

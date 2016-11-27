@@ -18,14 +18,15 @@ app.use(bodyParser.urlencoded({
 }));
 
 // variable declaration
-var pre = "/usr"; //"c:";//
+var pre = "c:"; //"/usr";//
 var dirname = pre + "/data/crawl/result/",
     naver = "naver/",
     daum = "daum/",
     twitter = "twitter/",
     naverCumulative = "naverCumulative/",
     daumCumulative = "daumCumulative/",
-    twitterCumulative = "twitterCumulative/";
+    twitterCumulative = "twitterCumulative/",
+    userDB = pre + "/data/crawl/dic.user";
 var allWords = [],
     englishWords = [],
     word = null,
@@ -111,13 +112,12 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                 }
 
                 var start = content;
+                start *= 1;
                 var tsvData = [];
                 var size = files.length - 1;
-                start++;
-                if (start == size)
-                    start = 0;
 
-                for (var i = 0; i < size; i++) {
+                for (var i = 0; i < 10; i++) {
+                    start = (start + 48) % 480;
                     var str = "" + start;
                     var pad = "000";
                     var ans = pad.substring(0, pad.length - str.length) + str;
@@ -125,10 +125,8 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                     var obj = JSON.parse(data);
                     var json = {};
 
-                    if (size - 1 == i)
-                        json.date = 0;
-                    else
-                        json.date = (size - i) / 48;
+                    json.date = 9 - i;
+
                     for (var j = 0; j < allWords.length; j++) {
                         var tmp = obj[allWords[j]];
                         if (typeof tmp == 'undefined')
@@ -136,11 +134,7 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                         json[allWords[j]] = tmp;
                     }
                     tsvData.push(json);
-
-                    if (start == size - 1)
-                        start = 0;
-                    else
-                        start++;
+                    //tsvData.reverse();
                 }
                 var tsv = json2csv({
                     data: tsvData,
@@ -217,13 +211,12 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                 }
 
                 var start = content;
+                start *= 1;
                 var tsvData = [];
                 var size = files.length - 1;
-                start++;
-                if (start == size)
-                    start = 0;
 
-                for (var i = 0; i < size; i++) {
+                for (var i = 0; i < 10; i++) {
+                    start = (start + 48) % 480;
                     var str = "" + start;
                     var pad = "000";
                     var ans = pad.substring(0, pad.length - str.length) + str;
@@ -231,10 +224,8 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                     var obj = JSON.parse(data);
                     var json = {};
 
-                    if (size - 1 == i)
-                        json.date = 0;
-                    else
-                        json.date = (size - i) / 48;
+                    json.date = 9 - i;
+
                     for (var j = 0; j < allWords.length; j++) {
                         var tmp = obj[allWords[j]];
                         if (typeof tmp == 'undefined')
@@ -243,10 +234,10 @@ var j = schedule.scheduleJob('0 */30 * * * *', function() { //every 30 minutes
                     }
                     tsvData.push(json);
 
-                    if (start == size - 1)
-                        start = 0;
-                    else
-                        start++;
+                    // if (start == size - 1)
+                    //     start = 0;
+                    // else
+                    //     start++;
                 }
                 var tsv = json2csv({
                     data: tsvData,
@@ -274,18 +265,23 @@ app.get("/", function(req, res) {
 ///////////////////////////////////////////
 app.get("/create", function(req, res) {
     res.render("form", {
-      allWords: allWords,
-      englishWords: englishWords
+        allWords: allWords,
+        englishWords: englishWords
     });
 });
 
 app.post("/create", function(req, res) {
     if (req.body.allWords.length === 0) {
-      allWords = [];
-      englishWords = [];
+        allWords = [];
+        englishWords = [];
     } else {
-      allWords = req.body.allWords.split(',');
-      englishWords = req.body.englishWords.split(',');
+        allWords = req.body.allWords.split(',');
+        englishWords = req.body.englishWords.split(',');
+        var DBcontent = "";
+        for (var i = 0; i < allWords.length; i++) {
+            DBcontent += allWords[i] + '\t' + "NNG" + '\n';
+        }
+        fs.writeFileSync(userDB, DBcontent);
     }
 
     res.redirect('/search');
@@ -311,22 +307,27 @@ app.post("/search", function(req, res) {
     engine = req.body.engineList;
 
     if (word !== null && word !== undefined && typeof word !== undefined) {
-        var data = fs.readFileSync(pre + "/data/crawl/article/title/daumTitles.txt");
-        data += fs.readFileSync(pre + "/data/crawl/article/title/naverTitles.txt");
-        data = data.toString().split('\n');
-
-        url = [];
+        rl = [];
         title = [];
         var map = new HashMap();
 
+        var testFolder = pre + "/data/crawl/article/titles/";
+        var dirs = fs.readdirSync(testFolder);
         var k = 0;
-        for (i = 0; i < data.length; i++) {
-            if (/^\s*$/.test(data[i]))
-                continue;
-            var tmp = data[i].split(/,(.+)?/);
-            if (tmp[1].indexOf(word) > -1) {
-                map.set(tmp[1], tmp[0]);
-            }
+        /* jshint loopfunc:true */
+        for (var i = 0; i < dirs.length - 1; i++) {
+            var location = testFolder + i + "/";
+            var files = fs.readdirSync(location);
+
+            files.forEach(function(file) {
+                var data = fs.readFileSync(location + file, 'utf-8');
+                var tmp = data.split('\n');
+                if (typeof tmp[2] === 'undefined')
+                    return;
+                if (tmp[2].indexOf(word) > -1) {
+                    map.set(tmp[0], tmp[1]);
+                }
+            });
         }
         map.forEach(function(value, key) {
             url[k] = value;
